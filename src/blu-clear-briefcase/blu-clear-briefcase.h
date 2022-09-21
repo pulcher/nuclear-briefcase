@@ -13,3 +13,11 @@
 // Setup some defaults
 #define BCB_DEFAULT_COLOR_1             0xFFFFFF    // White
 #define BCB_DEFAULT_COLOR_2             0x0000FF    // Blue
+
+// Available animations
+#define BCB_ANIMATION_SINGLE_LED        0   // single LED moving through all the LEDS alternate between color_1 and color_2
+#define BCB_ANIMATION_WIPE              1   // wipe all the LEDS alternate between color_1 and color_2
+
+// Animation Modes
+#define BCB_SINGLE_ANIMATION            0   // only do one animation 
+#define BCB_LOOP_ANIMATION              1   // the loop through all animations.

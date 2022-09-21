@@ -75,9 +75,15 @@ void error(const __FlashStringHelper*err) {
 uint8_t readPacket(Adafruit_BLE *ble, uint16_t timeout);
 float parsefloat(uint8_t *buffer);
 void printHex(const uint8_t * data, const uint32_t numBytes);
+void handleImuPacket(Adafruit_BLE *ble, uint8_t len);
+void runAnimation();
 
 // the packet buffer
 extern uint8_t packetbuffer[];
+
+// animation trackers
+uint8_t currentAnimation;
+uint8_t animationMode;
 
 
 void setup(void)
@@ -141,15 +147,39 @@ void setup(void)
 
   Serial.println(F("******************************"));
 
+  currentAnimation = BCB_ANIMATION_WIPE;
+  animationMode = BCB_SINGLE_ANIMATION;
+
 }
 
 void loop(void)
 {
   /* Wait for new data to arrive */
   uint8_t len = readPacket(&ble, BCB_READPACKET_TIMEOUT);
+
+  handleImuPacket(&ble, len);
+
+  runAnimation();
+
+}
+
+void runAnimation()
+{
+  switch (currentAnimation) {
+    case BCB_ANIMATION_SINGLE_LED:
+      Serial.println("Single LED");
+      return;
+    case BCB_ANIMATION_WIPE:
+      Serial.println("Wipe");
+      return;
+    default:
+      return;
+  }
+}
+
+void handleImuPacket(Adafruit_BLE *ble, uint8_t len)
+{
   if (len == 0) return;
-
-
   /* Got a packet! */
   // printHex(packetbuffer, len);
 
@@ -171,6 +201,12 @@ void loop(void)
   if (packetbuffer[1] == 'B') {
     uint8_t buttnum = packetbuffer[2] - '0';
     boolean pressed = packetbuffer[3] - '0';
+    
+    if(buttnum == 1)
+      currentAnimation = BCB_ANIMATION_SINGLE_LED;
+    if(buttnum == 2)
+      currentAnimation = BCB_ANIMATION_WIPE;
+
     Serial.print ("Button "); Serial.print(buttnum);
     if (pressed) {
       Serial.println(" pressed");
