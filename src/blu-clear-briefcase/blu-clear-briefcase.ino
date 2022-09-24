@@ -18,6 +18,7 @@
 #include "Adafruit_BLE.h"
 #include "Adafruit_BluefruitLE_SPI.h"
 #include "Adafruit_BluefruitLE_UART.h"
+#include <Adafruit_NeoPixel.h>
 
 #include "BluefruitConfig.h"
 #include "blu-clear-briefcase.h"
@@ -64,6 +65,7 @@
 
 
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+Adafruit_NeoPixel panel(BCB_NUM_LEDS, BCB_NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // A small helper
 void error(const __FlashStringHelper*err) {
@@ -75,15 +77,19 @@ void error(const __FlashStringHelper*err) {
 uint8_t readPacket(Adafruit_BLE *ble, uint16_t timeout);
 float parsefloat(uint8_t *buffer);
 void printHex(const uint8_t * data, const uint32_t numBytes);
-void handleImuPacket(Adafruit_BLE *ble, uint8_t len);
+void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len);
 void runAnimation();
 
 // the packet buffer
 extern uint8_t packetbuffer[];
 
 // animation trackers
-uint8_t currentAnimation;
-uint8_t animationMode;
+uint8_t  currentAnimation;
+uint32_t currentColor;
+int      currentColorIndex = 0;
+uint8_t  animationMode;
+
+int lastPixel = 0;
 
 
 void setup(void)
@@ -126,11 +132,6 @@ void setup(void)
 
   ble.verbose(false);  // debug info is a little annoying after this point!
 
-  /* Wait for connection */
-  while (! ble.isConnected()) {
-      delay(500);
-  }
-
   Serial.println(F("******************************"));
 
   // LED Activity command is only supported from 0.6.6
@@ -150,6 +151,12 @@ void setup(void)
   currentAnimation = BCB_ANIMATION_WIPE;
   animationMode = BCB_SINGLE_ANIMATION;
 
+  panel.begin();            // INITIALIZE NeoPixel strip object (REQUIRED)
+  panel.setBrightness(80);  // figure out what the inital setting should be.
+  panel.show();             // Turn OFF all pixels ASAP
+
+  pinMode(BCB_NEOPIXEL_PIN, OUTPUT);
+  digitalWrite(BCB_NEOPIXEL_PIN, LOW);
 }
 
 void loop(void)
@@ -157,7 +164,7 @@ void loop(void)
   /* Wait for new data to arrive */
   uint8_t len = readPacket(&ble, BCB_READPACKET_TIMEOUT);
 
-  handleImuPacket(&ble, len);
+  handleBluToothPacket(&ble, len);
 
   runAnimation();
 
@@ -171,13 +178,36 @@ void runAnimation()
       return;
     case BCB_ANIMATION_WIPE:
       Serial.println("Wipe");
+      Serial.print("currentColor: ");
+      Serial.println(currentColor);
+      Serial.print("currentColorIndex: ");
+      Serial.println(currentColorIndex);
+      colorWipe(currentColor, 20);            
       return;
     default:
       return;
   }
 }
 
-void handleImuPacket(Adafruit_BLE *ble, uint8_t len)
+uint32_t getNextColor() 
+{
+  switch (currentColorIndex) {
+    case 0:
+//      currentColorIndex++;
+      return panel.Color(255, 0, 0);
+    case 1:
+//      currentColorIndex++;    
+      return panel.Color(0, 255, 0);
+    case 2:
+//      currentColorIndex++;
+      return panel.Color(0, 0, 255);
+    default:
+      currentColorIndex = -1;
+      return panel.Color(0, 0, 0);
+  }
+}
+
+void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
 {
   if (len == 0) return;
   /* Got a packet! */
@@ -204,8 +234,11 @@ void handleImuPacket(Adafruit_BLE *ble, uint8_t len)
     
     if(buttnum == 1)
       currentAnimation = BCB_ANIMATION_SINGLE_LED;
-    if(buttnum == 2)
+    if(buttnum == 2) {
       currentAnimation = BCB_ANIMATION_WIPE;
+      currentColorIndex++;
+      currentColor = getNextColor();
+    }
 
     Serial.print ("Button "); Serial.print(buttnum);
     if (pressed) {
@@ -278,4 +311,27 @@ void handleImuPacket(Adafruit_BLE *ble, uint8_t len)
     Serial.print(z); Serial.print('\t');
     Serial.print(w); Serial.println();
   }
+}
+
+/*****************************************************************
+* Animations
+******************************************************************/
+
+void colorWipe(uint32_t color, int wait)
+{
+    // for (int i = 0; i < panel.numPixels(); i++)
+    // {                                  // For each pixel in strip...
+    //     panel.setPixelColor(i, color); //  Set pixel's color (in RAM)
+    //     panel.show();                  //  Update strip to match
+    //     delay(wait);                   //  Pause for a moment
+    // }
+
+    Serial.println(color);
+    panel.setPixelColor(lastPixel++, color);
+    panel.show();
+
+    if (lastPixel >= BCB_NUM_LEDS)
+      lastPixel = 0;
+    
+    delay(wait);
 }

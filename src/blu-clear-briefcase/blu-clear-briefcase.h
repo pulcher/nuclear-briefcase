@@ -2,6 +2,10 @@
  * Stuff that needs defining in the blu-clear-briefcase
  */
 
+#define BCB_NUM_LEDS                    768   // 256 * 3
+
+#define BCB_NEOPIXEL_PIN                12    // where the signal line is for that neopixels.
+
 #define BCB_READPACKET_TIMEOUT          10   // Timeout in ms waiting to read a response
 
 // Min and Max brightness ranges
