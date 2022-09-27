@@ -85,7 +85,10 @@ extern uint8_t packetbuffer[];
 
 // animation trackers
 uint8_t  currentAnimation;
+uint8_t  currentBrightness = 80;
 uint32_t currentColor;
+uint32_t color1 = BCB_DEFAULT_COLOR_1;
+uint32_t color2 = BCB_DEFAULT_COLOR_2;
 int      currentColorIndex = 0;
 uint8_t  animationMode;
 
@@ -172,14 +175,16 @@ void loop(void)
 
   runAnimation();
 
-  //gaussianWaveBreathing();
-
 }
 
 void runAnimation()
 {
-  Serial.print("currentAnimation: ");
-  Serial.println(currentAnimation);
+  // Serial.print("currentAnimation: ");
+  // Serial.print(currentAnimation);
+  // Serial.print(" currentBrightness: ");
+  // Serial.println(currentBrightness);
+
+  panel.setBrightness(currentBrightness);
 
   switch (currentAnimation) {
     case BCB_ANIMATION_BREATHING:
@@ -203,21 +208,21 @@ void runAnimation()
 uint32_t getNextColor(int pixelNumber) 
 {
   if (pixelNumber < 256)
-    return BCB_DEFAULT_COLOR_1;
+    return color1;
   if (pixelNumber > 255 && pixelNumber < 512)
-    return BCB_DEFAULT_COLOR_2;
+    return color2;
   
-  return BCB_DEFAULT_COLOR_1;  
+  return color1;  
 }
 
 uint32_t getNextColorInv(int pixelNumber) 
 {
   if (pixelNumber < 256)
-    return BCB_DEFAULT_COLOR_2;
+    return color2;
   if (pixelNumber > 255 && pixelNumber < 512)
-    return BCB_DEFAULT_COLOR_1;
+    return color1;
   
-  return BCB_DEFAULT_COLOR_2;  
+  return color2;  
 }
 
 /*****************************************************************
@@ -247,7 +252,7 @@ void gaussianWaveBreathing()
 
   for (int color = 0; color < 2; color++)
   {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_1 : BCB_DEFAULT_COLOR_2;
+    uint32_t currentColor = color % 2 ? color1 : color2;
 
     for (int ii = 0; ii < smoothness_pts; ii++)
     {
@@ -272,7 +277,7 @@ void gaussianWaveBreathing()
 
 void theaterChase() {
   for (int color = 0; color < 2; color++) {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_1 : BCB_DEFAULT_COLOR_2;
+    uint32_t currentColor = color % 2 ? color1 : color2;
     for (int a = 0; a < 10; a++) {   // Repeat 10 times...
       for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
         panel.clear();               //   Set all pixels in RAM to 0 (off)
@@ -291,11 +296,10 @@ void panelWipe()
 {
   for (int color = 0; color < 2; color++)
   {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_RED : BCB_DEFAULT_COLOR_2;
+    uint32_t currentColor = color % 2 ? color1 : color2;
     
     for (int i = 0; i < panel.numPixels(); i++)
     {                        
-      //uint32_t panelColor = (i/256) % 2 ? BCB_DEFAULT_COLOR_2 : BCB_DEFAULT_COLOR_1;
       uint32_t panelColor = color % 2 ? getNextColor(i) : getNextColorInv(i);
       panel.setPixelColor(i, panelColor); //  Set pixel's color (in RAM)
     }
@@ -307,12 +311,64 @@ void panelWipe()
   }
 }
 
+void checkBrightness()
+{
+  currentBrightness = constrain(currentBrightness, BCB_MIN_BRIGHT, BCB_MAX_BRIGHT);
+}
+
+void brighter()
+{
+  currentBrightness += 10;
+  checkBrightness();
+}
+
+void dimmer()
+{
+  currentBrightness -= 10;
+  checkBrightness();
+}
+
+void changeCurrentAnimation(int buttonNumber)
+{
+  switch(buttonNumber) 
+  {
+    case 1:
+      currentAnimation = BCB_ANIMATION_BREATHING;
+      return;
+    case 2:
+      currentAnimation = BCB_ANIMATION_COLOR_WIPE;
+      return;
+    case 3:
+      currentAnimation = BCB_ANIMATION_PANEL_WIPE;
+      return;
+    case 4:
+      currentAnimation = BCB_ANIMATION_THEATER;
+      return;
+    case 5:
+      // up arrow
+      brighter();
+      return;
+    case 6:
+      // down arrow
+      dimmer();
+      return;
+    case 7:
+      // left arrow
+      currentAnimation = BCB_ANIMATION_STOP;
+      return;
+    case 8:
+      // right arrow
+      return;
+    default:
+      currentAnimation = -1;
+  }
+}
 
 void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
 {
   if (len == 0) return;
   /* Got a packet! */
-  // printHex(packetbuffer, len);
+  printHex(packetbuffer, len);
 
   // Color
   if (packetbuffer[1] == 'C') {
@@ -326,11 +382,20 @@ void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
     Serial.print(green, HEX);
     if (blue < 0x10) Serial.print("0");
     Serial.println(blue, HEX);
+
+    color2 = color1;
+
+    color1 = (red << 16) + (green << 8) + blue;
+
+    Serial.print("color1: ");
+    Serial.print(color1, HEX);
+    Serial.print(" color2: ");
+    Serial.print(color2, HEX);
   }
 
   // Buttons
   if (packetbuffer[1] == 'B') {
-    uint8_t buttnum = packetbuffer[2] - '0';
+    int buttnum = packetbuffer[2] - '0';
     boolean pressed = packetbuffer[3] - '0';
     
     Serial.print ("Button "); 
@@ -339,71 +404,7 @@ void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
       Serial.println(" pressed");
     } else {
       Serial.println(" released");
-      currentAnimation = buttnum - 1;
+      changeCurrentAnimation(buttnum);
     }
-  }
-
-  // GPS Location
-  if (packetbuffer[1] == 'L') {
-    float lat, lon, alt;
-    lat = parsefloat(packetbuffer+2);
-    lon = parsefloat(packetbuffer+6);
-    alt = parsefloat(packetbuffer+10);
-    Serial.print("GPS Location\t");
-    Serial.print("Lat: "); Serial.print(lat, 4); // 4 digits of precision!
-    Serial.print('\t');
-    Serial.print("Lon: "); Serial.print(lon, 4); // 4 digits of precision!
-    Serial.print('\t');
-    Serial.print(alt, 4); Serial.println(" meters");
-  }
-
-  // Accelerometer
-  if (packetbuffer[1] == 'A') {
-    float x, y, z;
-    x = parsefloat(packetbuffer+2);
-    y = parsefloat(packetbuffer+6);
-    z = parsefloat(packetbuffer+10);
-    Serial.print("Accel\t");
-    Serial.print(x); Serial.print('\t');
-    Serial.print(y); Serial.print('\t');
-    Serial.print(z); Serial.println();
-  }
-
-  // Magnetometer
-  if (packetbuffer[1] == 'M') {
-    float x, y, z;
-    x = parsefloat(packetbuffer+2);
-    y = parsefloat(packetbuffer+6);
-    z = parsefloat(packetbuffer+10);
-    Serial.print("Mag\t");
-    Serial.print(x); Serial.print('\t');
-    Serial.print(y); Serial.print('\t');
-    Serial.print(z); Serial.println();
-  }
-
-  // Gyroscope
-  if (packetbuffer[1] == 'G') {
-    float x, y, z;
-    x = parsefloat(packetbuffer+2);
-    y = parsefloat(packetbuffer+6);
-    z = parsefloat(packetbuffer+10);
-    Serial.print("Gyro\t");
-    Serial.print(x); Serial.print('\t');
-    Serial.print(y); Serial.print('\t');
-    Serial.print(z); Serial.println();
-  }
-
-  // Quaternions
-  if (packetbuffer[1] == 'Q') {
-    float x, y, z, w;
-    x = parsefloat(packetbuffer+2);
-    y = parsefloat(packetbuffer+6);
-    z = parsefloat(packetbuffer+10);
-    w = parsefloat(packetbuffer+14);
-    Serial.print("Quat\t");
-    Serial.print(x); Serial.print('\t');
-    Serial.print(y); Serial.print('\t');
-    Serial.print(z); Serial.print('\t');
-    Serial.print(w); Serial.println();
   }
 }
