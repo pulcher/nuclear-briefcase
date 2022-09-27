@@ -107,6 +107,7 @@ void setup(void)
   /* Initialise the module */
   Serial.print(F("Initialising the Bluefruit LE module: "));
 
+  // ble.name("Blu-clear Briefcase");
   if ( !ble.begin(VERBOSE_MODE) )
   {
     error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
@@ -151,8 +152,8 @@ void setup(void)
 
   Serial.println(F("******************************"));
 
-  currentAnimation = BCB_ANIMATION_WIPE;
-  animationMode = BCB_SINGLE_ANIMATION;
+  currentAnimation = BCB_ANIMATION_BREATHING;
+  //animationMode = BCB_SINGLE_ANIMATION;
 
   panel.begin();            // INITIALIZE NeoPixel strip object (REQUIRED)
   panel.setBrightness(80);  // figure out what the inital setting should be.
@@ -165,29 +166,33 @@ void setup(void)
 void loop(void)
 {
   /* Wait for new data to arrive */
-  // uint8_t len = readPacket(&ble, BCB_READPACKET_TIMEOUT);
+  uint8_t len = readPacket(&ble, BCB_READPACKET_TIMEOUT);
 
-  // handleBluToothPacket(&ble, len);
+  handleBluToothPacket(&ble, len);
 
-  // runAnimation();
+  runAnimation();
 
-  gaussianWaveBreathing();
+  //gaussianWaveBreathing();
 
 }
 
 void runAnimation()
 {
+  Serial.print("currentAnimation: ");
+  Serial.println(currentAnimation);
+
   switch (currentAnimation) {
-    case BCB_ANIMATION_SINGLE_LED:
-      Serial.println("Single LED");
+    case BCB_ANIMATION_BREATHING:
+      gaussianWaveBreathing();
       return;
-    case BCB_ANIMATION_WIPE:
-      Serial.println("Wipe");
-      Serial.print("currentColor: ");
-      Serial.println(currentColor);
-      Serial.print("currentColorIndex: ");
-      Serial.println(currentColorIndex);
-      //colorWipe(currentColor, 20);            
+    case BCB_ANIMATION_COLOR_WIPE:
+      colorWipe();
+      return;
+    case BCB_ANIMATION_PANEL_WIPE:
+      panelWipe();
+      return;
+    case BCB_ANIMATION_THEATER:
+      theaterChase();
       return;
     default:
       return;
@@ -215,6 +220,94 @@ uint32_t getNextColorInv(int pixelNumber)
   return BCB_DEFAULT_COLOR_2;  
 }
 
+/*****************************************************************
+* Animations
+******************************************************************/
+
+void colorWipe()
+{
+  for (int color = 0; color < 2; color++)
+  {
+    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_RED : BCB_DEFAULT_COLOR_2;
+    for (int i = 0; i < panel.numPixels(); i++)
+    {                                       // For each pixel in strip...
+      panel.setPixelColor(i, currentColor); //  Set pixel's color (in RAM)
+      //delay(50);                   //  Pause for a moment
+    }
+
+    panel.show();                         //  Update strip to match
+    delay(200);
+  }
+}
+
+void gaussianWaveBreathing()
+{
+  float gamma = 0.20; // affects the width of peak (more or less darkness)
+  float beta = 0.5;   // shifts the gaussian to be symmetric
+
+  for (int color = 0; color < 2; color++)
+  {
+    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_1 : BCB_DEFAULT_COLOR_2;
+
+    for (int ii = 0; ii < smoothness_pts; ii++)
+    {
+      float pwm_val = BCB_MAX_BRIGHT * (exp(-(pow(((ii / smoothness_pts) - beta) / gamma, 2.0)) / 2.0));
+      if (pwm_val < BCB_MIN_BRIGHT)
+      {
+        pwm_val = BCB_MIN_BRIGHT;
+      }
+
+      // Serial.println(int(pwm_val));
+      panel.setBrightness(pwm_val);
+
+      for (int i = 0; i < BCB_NUM_LEDS; i++)
+      {
+        panel.setPixelColor(i, currentColor);
+      }
+
+      panel.show();
+    }
+  }
+}
+
+void theaterChase() {
+  for (int color = 0; color < 2; color++) {
+    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_1 : BCB_DEFAULT_COLOR_2;
+    for (int a = 0; a < 10; a++) {   // Repeat 10 times...
+      for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
+        panel.clear();               //   Set all pixels in RAM to 0 (off)
+        // 'c' counts up from 'b' to end of strip in steps of 3...
+        for (int c = b; c < panel.numPixels(); c += 3) {
+          panel.setPixelColor(c, currentColor);  // Set pixel 'c' to value 'color'
+        }
+        panel.show();  // Update strip with new contents
+        delay(5);      // Pause for a moment
+      }
+    }
+  }
+}
+
+void panelWipe()
+{
+  for (int color = 0; color < 2; color++)
+  {
+    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_RED : BCB_DEFAULT_COLOR_2;
+    
+    for (int i = 0; i < panel.numPixels(); i++)
+    {                        
+      //uint32_t panelColor = (i/256) % 2 ? BCB_DEFAULT_COLOR_2 : BCB_DEFAULT_COLOR_1;
+      uint32_t panelColor = color % 2 ? getNextColor(i) : getNextColorInv(i);
+      panel.setPixelColor(i, panelColor); //  Set pixel's color (in RAM)
+    }
+
+  // i % 256  => 0   % 2
+
+    panel.show();                         //  Update strip to match
+    delay(100);
+  }
+}
+
+
 void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
 {
   if (len == 0) return;
@@ -240,19 +333,13 @@ void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
     uint8_t buttnum = packetbuffer[2] - '0';
     boolean pressed = packetbuffer[3] - '0';
     
-    if(buttnum == 1)
-      currentAnimation = BCB_ANIMATION_SINGLE_LED;
-    if(buttnum == 2) {
-      currentAnimation = BCB_ANIMATION_WIPE;
-      currentColorIndex++;
-      //currentColor = getNextColor();
-    }
-
-    Serial.print ("Button "); Serial.print(buttnum);
+    Serial.print ("Button "); 
+    Serial.print(buttnum);
     if (pressed) {
       Serial.println(" pressed");
     } else {
       Serial.println(" released");
+      currentAnimation = buttnum - 1;
     }
   }
 
@@ -318,92 +405,5 @@ void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
     Serial.print(y); Serial.print('\t');
     Serial.print(z); Serial.print('\t');
     Serial.print(w); Serial.println();
-  }
-}
-
-/*****************************************************************
-* Animations
-******************************************************************/
-
-void colorWipe()
-{
-  for (int color = 0; color < 2; color++)
-  {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_RED : BCB_DEFAULT_COLOR_2;
-    for (int i = 0; i < panel.numPixels(); i++)
-    {                                       // For each pixel in strip...
-      panel.setPixelColor(i, currentColor); //  Set pixel's color (in RAM)
-      //delay(50);                   //  Pause for a moment
-    }
-
-    panel.show();                         //  Update strip to match
-    delay(200);
-  }
-}
-
-void gaussianWaveBreathing()
-{
-  float gamma = 0.20; // affects the width of peak (more or less darkness)
-  float beta = 0.5;   // shifts the gaussian to be symmetric
-
-  for (int color = 0; color < 2; color++)
-  {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_1 : BCB_DEFAULT_COLOR_2;
-
-    for (int ii = 0; ii < smoothness_pts; ii++)
-    {
-      float pwm_val = BCB_MAX_BRIGHT * (exp(-(pow(((ii / smoothness_pts) - beta) / gamma, 2.0)) / 2.0));
-      if (pwm_val < BCB_MIN_BRIGHT)
-      {
-        pwm_val = BCB_MIN_BRIGHT;
-      }
-
-      Serial.println(int(pwm_val));
-      panel.setBrightness(pwm_val);
-
-      for (int i = 0; i < BCB_NUM_LEDS; i++)
-      {
-        panel.setPixelColor(i, currentColor);
-      }
-
-      panel.show();
-    }
-  }
-}
-
-void theaterChase() {
-  for (int color = 0; color < 2; color++) {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_1 : BCB_DEFAULT_COLOR_2;
-    for (int a = 0; a < 10; a++) {   // Repeat 10 times...
-      for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
-        panel.clear();               //   Set all pixels in RAM to 0 (off)
-        // 'c' counts up from 'b' to end of strip in steps of 3...
-        for (int c = b; c < panel.numPixels(); c += 3) {
-          panel.setPixelColor(c, currentColor);  // Set pixel 'c' to value 'color'
-        }
-        panel.show();  // Update strip with new contents
-        delay(5);      // Pause for a moment
-      }
-    }
-  }
-}
-
-void panelWipe()
-{
-  for (int color = 0; color < 2; color++)
-  {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_RED : BCB_DEFAULT_COLOR_2;
-    
-    for (int i = 0; i < panel.numPixels(); i++)
-    {                        
-      //uint32_t panelColor = (i/256) % 2 ? BCB_DEFAULT_COLOR_2 : BCB_DEFAULT_COLOR_1;
-      uint32_t panelColor = color % 2 ? getNextColor(i) : getNextColorInv(i);
-      panel.setPixelColor(i, panelColor); //  Set pixel's color (in RAM)
-    }
-
-  // i % 256  => 0   % 2
-
-    panel.show();                         //  Update strip to match
-    delay(100);
   }
 }

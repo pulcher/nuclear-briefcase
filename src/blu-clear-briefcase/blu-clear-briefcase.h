@@ -10,7 +10,7 @@
 
 // Min and Max brightness ranges
 #define BCB_MIN_BRIGHT                  5
-#define BCB_MAX_BRIGHT                  130
+#define BCB_MAX_BRIGHT                  120
 
 #define BCB_ANIMATION_CYCLES            10   // number of animation cycles to execute before exiting
 
@@ -20,8 +20,10 @@
 #define BCB_DEFAULT_COLOR_RED           0xFF0000    // Red
 
 // Available animations
-#define BCB_ANIMATION_SINGLE_LED        0   // single LED moving through all the LEDS alternate between color_1 and color_2
-#define BCB_ANIMATION_WIPE              1   // wipe all the LEDS alternate between color_1 and color_2
+#define BCB_ANIMATION_BREATHING         0   // Breathing LEDS alternate between color_1 and color_2
+#define BCB_ANIMATION_COLOR_WIPE        1   // wipe all the LEDS alternate between color_1 and color_2
+#define BCB_ANIMATION_PANEL_WIPE        2   // wipe grouping the LEDS by panel alternate between color_1 and color_2
+#define BCB_ANIMATION_THEATER           3   // running theater lights using color1 and color2 colors.
 
 // Animation Modes
 #define BCB_SINGLE_ANIMATION            0   // only do one animation 
