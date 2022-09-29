@@ -233,7 +233,7 @@ void colorWipe()
 {
   for (int color = 0; color < 2; color++)
   {
-    uint32_t currentColor = color % 2 ? BCB_DEFAULT_COLOR_RED : BCB_DEFAULT_COLOR_2;
+    uint32_t currentColor = color % 2 ? color1 : color2;
     for (int i = 0; i < panel.numPixels(); i++)
     {                                       // For each pixel in strip...
       panel.setPixelColor(i, currentColor); //  Set pixel's color (in RAM)
