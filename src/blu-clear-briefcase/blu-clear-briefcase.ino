@@ -91,6 +91,7 @@ uint32_t color1 = BCB_DEFAULT_COLOR_1;
 uint32_t color2 = BCB_DEFAULT_COLOR_2;
 int      currentColorIndex = 0;
 uint8_t  animationMode;
+boolean  isPanelCleared = false;
 
 int lastPixel = 0;
 
@@ -100,7 +101,7 @@ int pixelQueue = 0;
 
 void setup(void)
 {
-  while (!Serial); 
+  //while (!Serial); 
   delay(500);
 
   Serial.begin(115200);
@@ -162,8 +163,16 @@ void setup(void)
   panel.setBrightness(80);  // figure out what the inital setting should be.
   panel.show();             // Turn OFF all pixels ASAP
 
+  // Neopixel Pin Setup
   pinMode(BCB_NEOPIXEL_PIN, OUTPUT);
   digitalWrite(BCB_NEOPIXEL_PIN, LOW);
+
+  // Briefcase Lid Pin Setup
+  pinMode(BCB_LID_PIN, INPUT_PULLUP);
+  
+  // Briefcase Switch Pin Setup
+  pinMode(BCB_SWITCH_PIN, OUTPUT);
+  pinMode(BCB_SWITCH_PIN, HIGH);
 }
 
 void loop(void)
@@ -173,8 +182,21 @@ void loop(void)
 
   handleBluToothPacket(&ble, len);
 
-  runAnimation();
+  if (digitalRead(BCB_LID_PIN)) {
+    runAnimation();
+    isPanelCleared = false;
+  } else {
+    if (!isPanelCleared) {
+      delay(50);
 
+      // empty the lights so they dont burn in power with the lid closed.
+      panel.clear();
+      panel.show();
+    }
+
+    Serial.println("not gonna run an animation!  Punk!");
+    isPanelCleared = true;
+  }
 }
 
 void runAnimation()
@@ -203,7 +225,6 @@ void runAnimation()
       return;
   }
 }
-
 
 uint32_t getNextColor(int pixelNumber) 
 {

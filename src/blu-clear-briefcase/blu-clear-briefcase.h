@@ -2,11 +2,13 @@
  * Stuff that needs defining in the blu-clear-briefcase
  */
 
-#define BCB_NUM_LEDS                    768   // 256 * 3
+#define BCB_NUM_LEDS                    768 // 256 * 3
 
-#define BCB_NEOPIXEL_PIN                12    // where the signal line is for that neopixels.
+#define BCB_NEOPIXEL_PIN                12  // where the signal line is for that neopixels.
+#define BCB_LID_PIN                     10  // pin that watches the reed switch on the briefcase lid.
+#define BCB_SWITCH_PIN                     6   // pin that sets the switch LED on or off.  Active-Low.
 
-#define BCB_READPACKET_TIMEOUT          10   // Timeout in ms waiting to read a response
+#define BCB_READPACKET_TIMEOUT          10  // Timeout in ms waiting to read a response
 
 // Min and Max brightness ranges
 #define BCB_MIN_BRIGHT                  5
