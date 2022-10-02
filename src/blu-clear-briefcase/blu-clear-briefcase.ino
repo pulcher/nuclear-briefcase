@@ -127,6 +127,12 @@ void setup(void)
     }
   }
 
+/* Change the device name to make it easier to find */
+  Serial.println(F("Setting device name to 'Bluefruit Keyboard': "));
+  if (! ble.sendCommandCheckOK(F( "AT+GAPDEVNAME=Blu-clear briefcase" )) ) {
+    error(F("Could not set device name?"));
+  }
+
   /* Disable command echo from Bluefruit */
   ble.echo(false);
 
@@ -169,7 +175,7 @@ void setup(void)
 
   // Briefcase Lid Pin Setup
   pinMode(BCB_LID_PIN, INPUT_PULLUP);
-  
+
   // Briefcase Switch Pin Setup
   pinMode(BCB_SWITCH_PIN, OUTPUT);
   pinMode(BCB_SWITCH_PIN, HIGH);
