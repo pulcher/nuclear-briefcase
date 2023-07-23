@@ -79,6 +79,7 @@ float parsefloat(uint8_t *buffer);
 void printHex(const uint8_t * data, const uint32_t numBytes);
 void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len);
 void runAnimation();
+void setupCrazyArray();
 
 // the packet buffer
 extern uint8_t packetbuffer[];
@@ -98,6 +99,9 @@ int lastPixel = 0;
 float smoothness_pts = 100;
 
 int pixelQueue = 0;
+
+uint32_t dispalyArray[768];
+uint32_t dispalyInvArray[768];
 
 void setup(void)
 {
@@ -179,6 +183,8 @@ void setup(void)
   // Briefcase Switch Pin Setup
   pinMode(BCB_SWITCH_PIN, OUTPUT);
   pinMode(BCB_SWITCH_PIN, HIGH);
+
+  setupCrazyArray();
 }
 
 void loop(void)
@@ -252,6 +258,24 @@ uint32_t getNextColorInv(int pixelNumber)
     return color1;
   
   return color2;  
+}
+
+void setupCrazyArray()
+{
+  uint32_t colorToUse1 = color1;
+  uint32_t colorToUse2 = color2;
+
+  for (int i = 0; i< panel.numPixels(); i++) {
+    if (i % 86 == 0) 
+    {
+      uint32_t saveColor1 = colorToUse1;
+      colorToUse1 = colorToUse2;
+      colorToUse2 = saveColor1;
+    }
+
+    dispalyArray[i] = colorToUse1;
+    dispalyInvArray[i] = colorToUse2;
+  }
 }
 
 /*****************************************************************
@@ -342,21 +366,21 @@ void panelWipe()
 
 void crazyAnimation()
 {
-  for (int color = 0; color < 2; color++)
-  {
-    uint32_t currentColor = color % 2 ? color1 : color2;
-    
-    for (int i = 0; i < panel.numPixels(); i++)
-    {                        
-      uint32_t panelColor = color % 2 ? getNextColor(i) : getNextColorInv(i);
-      panel.setPixelColor(i, panelColor); //  Set pixel's color (in RAM)
-    }
+  bool useInv = false;
 
-  // i % 256  => 0   % 2
-
-    panel.show();                         //  Update strip to match
-    delay(100);
+  for (int i = 0; i < panel.numPixels(); i++)
+  {                        
+    panel.setPixelColor(i, dispalyArray[i]); 
   }
+  panel.show();                         //  Update strip to match
+  delay(10);
+
+  for (int i = 0; i < panel.numPixels(); i++)
+  {                        
+    panel.setPixelColor(i, dispalyInvArray[i]); 
+  }
+  panel.show();                         //  Update strip to match
+  delay(10);
 }
 
 void checkBrightness()
@@ -440,6 +464,8 @@ void handleBluToothPacket(Adafruit_BLE *ble, uint8_t len)
     Serial.print(color1, HEX);
     Serial.print(" color2: ");
     Serial.print(color2, HEX);
+
+    setupCrazyArray();
   }
 
   // Buttons

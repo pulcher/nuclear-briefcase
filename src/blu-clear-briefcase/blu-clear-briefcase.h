@@ -17,8 +17,8 @@
 #define BCB_ANIMATION_CYCLES            10   // number of animation cycles to execute before exiting
 
 // Setup some defaults
-#define BCB_DEFAULT_COLOR_1             0xFFFFFF    // White
-#define BCB_DEFAULT_COLOR_2             0x0000FF    // Blue
+#define BCB_DEFAULT_COLOR_1             0xFF0090 // RED   // 0xFFFFFF    // White
+#define BCB_DEFAULT_COLOR_2             0x90FF00 // GREEN // 0x0000FF    // Blue
 #define BCB_DEFAULT_COLOR_RED           0xFF0000    // Red
 
 // Available animations
