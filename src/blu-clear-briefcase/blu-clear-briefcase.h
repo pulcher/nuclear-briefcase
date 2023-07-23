@@ -27,6 +27,7 @@
 #define BCB_ANIMATION_COLOR_WIPE        1   // wipe all the LEDS alternate between color_1 and color_2
 #define BCB_ANIMATION_PANEL_WIPE        2   // wipe grouping the LEDS by panel alternate between color_1 and color_2
 #define BCB_ANIMATION_THEATER           3   // running theater lights using color1 and color2 colors.
+#define BCB_ANIMATION_CRAZY             4   // crazy lights using red, green, and white.
 
 // Animation Modes
 #define BCB_SINGLE_ANIMATION            0   // only do one animation 

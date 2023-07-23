@@ -162,7 +162,7 @@ void setup(void)
 
   Serial.println(F("******************************"));
 
-  currentAnimation = BCB_ANIMATION_BREATHING;
+  currentAnimation = BCB_ANIMATION_CRAZY;
   //animationMode = BCB_SINGLE_ANIMATION;
 
   panel.begin();            // INITIALIZE NeoPixel strip object (REQUIRED)
@@ -207,10 +207,10 @@ void loop(void)
 
 void runAnimation()
 {
-  // Serial.print("currentAnimation: ");
-  // Serial.print(currentAnimation);
-  // Serial.print(" currentBrightness: ");
-  // Serial.println(currentBrightness);
+  Serial.print("currentAnimation: ");
+  Serial.print(currentAnimation);
+  Serial.print(" currentBrightness: ");
+  Serial.println(currentBrightness);
 
   panel.setBrightness(currentBrightness);
 
@@ -227,6 +227,8 @@ void runAnimation()
     case BCB_ANIMATION_THEATER:
       theaterChase();
       return;
+    case BCB_ANIMATION_CRAZY:
+      crazyAnimation();
     default:
       return;
   }
@@ -338,6 +340,25 @@ void panelWipe()
   }
 }
 
+void crazyAnimation()
+{
+  for (int color = 0; color < 2; color++)
+  {
+    uint32_t currentColor = color % 2 ? color1 : color2;
+    
+    for (int i = 0; i < panel.numPixels(); i++)
+    {                        
+      uint32_t panelColor = color % 2 ? getNextColor(i) : getNextColorInv(i);
+      panel.setPixelColor(i, panelColor); //  Set pixel's color (in RAM)
+    }
+
+  // i % 256  => 0   % 2
+
+    panel.show();                         //  Update strip to match
+    delay(100);
+  }
+}
+
 void checkBrightness()
 {
   currentBrightness = constrain(currentBrightness, BCB_MIN_BRIGHT, BCB_MAX_BRIGHT);
@@ -385,6 +406,7 @@ void changeCurrentAnimation(int buttonNumber)
       return;
     case 8:
       // right arrow
+      currentAnimation = BCB_ANIMATION_CRAZY;
       return;
     default:
       currentAnimation = -1;
